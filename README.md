@@ -1,2 +1,29 @@
 # PlexAdScrubber
-This script is meant for use by users who use the DVR functionality in their Plex server to record videos from television.  It's primary function is to aid in removing ads from the recorded .ts video file, then convert to .mkv.  
+
+PlexAdScrubber is a Python script that removes specified segments from a .ts video file, then converts the results to an .mkv file. This is particularly useful for removing commercials or unwanted parts from TV shows or movies recorded on the Plex DVR.
+
+## Dependencies
+
+This script depends on `ffmpeg` and `mkvmerge`. Please ensure they are installed and in the system PATH.
+
+## Usage
+
+Run the script from the command line with:
+
+```bash
+python3 PlexAdScrubber.py
+```
+
+The script will prompt you for the following inputs:
+
+The name of the source video file.  You can include a path to the file.
+The number of segments to be retained.
+The start and end time for each segment to be removed.
+Note: times should be entered in the format HH:MM:SS.s - HH:MM:SS.s. 
+The output will be a file named <input_file_name>-edited.mkv, and will be saved in the same directory as the source video file.
+
+## License
+This project is licensed under the MIT License - see the LICENSE.md file for details.
+
+## Contribution
+Contributions, issues and feature requests are welcome.
