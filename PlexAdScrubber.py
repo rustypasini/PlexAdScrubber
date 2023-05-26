@@ -4,15 +4,7 @@ import re
 import sys
 import subprocess
 
-"""
-PlexAdScrubber.py
-Version: 0.1.0
-Author: Rusty Pasini
-Date: 2023-05-24
-Description: This script is used to split and merge segments of a video file.
-             It requires user input for file names and timestamps.
-             The script is dependent on ffmpeg and mkvmerge tools.
-"""
+VERSION = "0.1.1"
 
 def print_help_message():
     help_message = """
@@ -36,7 +28,7 @@ def print_help_message():
     print(help_message)
 
 def run_command(command):
-    """Runs a command and exits the script with an error if the command fails."""
+    # Runs a command and exits the script with an error if the command fails.
     exit_status = os.system(command)
     if exit_status != 0:
         print(f"\nError: The following command exited with status {exit_status}:\n{command}")
@@ -60,7 +52,9 @@ def prompt_file_name():
             print("Invalid file name. Please try again.")
 
 def prompt_segments(num_segments):
+    # RegEx to validate time format
     time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
+    # List of start and end times for the segments to be kept
     segments = []
     for i in range(num_segments):
         while True:
@@ -73,6 +67,7 @@ def prompt_segments(num_segments):
     return segments
 
 def convert_to_mkv(file_name):
+    # Convert .ts file to .mkv
     run_command(f'ffmpeg -i "{file_name}" -c copy output.mkv > /dev/null 2>&1')
     if not os.path.isfile("output.mkv"):
         print(f"\nError: Failed to create output.mkv.")
@@ -81,17 +76,21 @@ def convert_to_mkv(file_name):
     sys.stdout.flush()
 
 def split_file(segments):
+    # Create a list of split times
     split_times = []
     for segment in segments:
         start_time, end_time = [time.strip() for time in segment.split("-")]
         split_times.append(start_time)
         split_times.append(end_time)
+    # Format split times as a comma-separated string
     split_times_str = ",".join(split_times)
+    # Use mkvmerge to split the file at the start and end of each segment
     run_command(f'mkvmerge -o split.mkv --split timecodes:{split_times_str} output.mkv > /dev/null 2>&1')
     print(".", end="")
     sys.stdout.flush()
 
 def merge_files(num_segments, new_file_name, split_times):
+    # Check if the first segment starts at 00:00:00
     starts_at_zero = split_times[0] == "00:00:00.0"
     if starts_at_zero:
         merge_files_starting_zero(num_segments, new_file_name)
@@ -128,9 +127,13 @@ def remove_output_file():
         run_command('rm output.mkv')
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']:
-        print_help_message()
-        sys.exit(0)
+    if len(sys.argv) > 1:
+        if sys.argv[1] in ['-h', '--help']:
+            print_help_message()
+            sys.exit(0)
+        elif sys.argv[1] in ['-v', '--version']:
+            print(f"PlexAdScrubber.py version {VERSION}")
+            sys.exit(0)
 
     required_programs = ['ffmpeg', 'mkvmerge']
     check_dependencies(required_programs)
