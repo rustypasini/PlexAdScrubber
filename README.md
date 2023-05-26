@@ -6,6 +6,13 @@ PlexAdScrubber is a Python script that removes specified segments from a .ts vid
 
 This script depends on `ffmpeg` and `mkvmerge`. Please ensure they are installed and in the system PATH.
 
+### Install dependencies on Ubuntu
+
+```bash
+apt update
+apt install ffmpeg mkvmerge
+```
+
 ## Usage
 
 Run the script from the command line with:
