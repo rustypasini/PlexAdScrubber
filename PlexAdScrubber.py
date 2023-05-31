@@ -4,7 +4,7 @@ import re
 import sys
 import subprocess
 
-VERSION = "0.1.1"
+VERSION = "0.1.2-a"
 
 def print_help_message():
     help_message = """
@@ -15,7 +15,6 @@ def print_help_message():
     The script will prompt you for the following inputs:
 
     - The name of the input file
-    - The number of segments
     - The start and end time for each segment
 
     The times should be entered in the format HH:MM:SS.s - HH:MM:SS.s.
@@ -51,19 +50,37 @@ def prompt_file_name():
         else:
             print("Invalid file name. Please try again.")
 
-def prompt_segments(num_segments):
+#def prompt_segments(num_segments):
+#    # RegEx to validate time format
+#    time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
+#    # List of start and end times for the segments to be kept
+#    segments = []
+#    for i in range(num_segments):
+#        while True:
+#            segment = input(f"Please enter the start and end time for segment {i+1} (HH:MM:SS.s - HH:MM:SS.s): ")
+#            if time_pattern.match(segment):
+#                segments.append(segment.replace(" ", ""))
+#                break
+#            else:
+#                print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
+#    return segments
+
+def prompt_segments():
     # RegEx to validate time format
     time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
     # List of start and end times for the segments to be kept
     segments = []
-    for i in range(num_segments):
-        while True:
-            segment = input(f"Please enter the start and end time for segment {i+1} (HH:MM:SS.s - HH:MM:SS.s): ")
-            if time_pattern.match(segment):
-                segments.append(segment.replace(" ", ""))
-                break
-            else:
-                print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
+    i = 0
+    while True:
+        i += 1
+        segment = input(f"Enter the start & end time for segment {i}, or hit Enter to stop: ")
+        if not segment:
+            break
+        if time_pattern.match(segment):
+            segments.append(segment.replace(" ", ""))
+        else:
+            print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
+            i -= 1
     return segments
 
 def convert_to_mkv(file_name):
@@ -126,6 +143,36 @@ def remove_output_file():
     if os.path.isfile("output.mkv"):
         run_command('rm output.mkv')
 
+#def main():
+#    if len(sys.argv) > 1:
+#        if sys.argv[1] in ['-h', '--help']:
+#            print_help_message()
+#            sys.exit(0)
+#        elif sys.argv[1] in ['-v', '--version']:
+#            print(f"PlexAdScrubber.py version {VERSION}")
+#            sys.exit(0)
+#
+#    required_programs = ['ffmpeg', 'mkvmerge']
+#    check_dependencies(required_programs)
+#    file_name, new_file_name = prompt_file_name()
+#
+#    while True:
+#        num_segments = input("Please enter the number of segments: ")
+#        if num_segments.isdigit() and int(num_segments) > 0:
+#            num_segments = int(num_segments)
+#            break
+#        else:
+#            print("Invalid input. Please enter a positive integer.")
+#
+#    segments = prompt_segments(num_segments)
+#    print("Starting video processing...", end="")
+#    sys.stdout.flush()
+#    convert_to_mkv(file_name)
+#    split_file(segments)
+#    merge_files(num_segments, new_file_name, segments[0].split("-"))
+#    remove_output_file()
+#    print("\nVideo processing has completed.")
+    
 def main():
     if len(sys.argv) > 1:
         if sys.argv[1] in ['-h', '--help']:
@@ -138,24 +185,16 @@ def main():
     required_programs = ['ffmpeg', 'mkvmerge']
     check_dependencies(required_programs)
     file_name, new_file_name = prompt_file_name()
+    segments = prompt_segments()
+    num_segments = len(segments)
 
-    while True:
-        num_segments = input("Please enter the number of segments: ")
-        if num_segments.isdigit() and int(num_segments) > 0:
-            num_segments = int(num_segments)
-            break
-        else:
-            print("Invalid input. Please enter a positive integer.")
-
-    segments = prompt_segments(num_segments)
     print("Starting video processing...", end="")
     sys.stdout.flush()
     convert_to_mkv(file_name)
     split_file(segments)
-    merge_files(num_segments, new_file_name, segments[0].split("-"))
+    merge_files(num_segments, new_file_name, segments[0].split("-") if segments else None)
     remove_output_file()
     print("\nVideo processing has completed.")
 
 if __name__ == '__main__':
     main()
-
