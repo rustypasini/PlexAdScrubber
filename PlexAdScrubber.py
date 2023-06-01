@@ -52,24 +52,6 @@ def prompt_file_name():
         else:
             print("Invalid file name. Please try again.")
 
-#def prompt_segments():
-#    # RegEx to validate time format
-#    time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
-#    # List of start and end times for the segments to be kept
-#    segments = []
-#    i = 0
-#    while True:
-#        i += 1
-#        segment = input(f"Enter the start & end time for segment {i}, or hit Enter to stop: ")
-#        if not segment:
-#            break
-#        if time_pattern.match(segment):
-#            segments.append(segment.replace(" ", ""))
-#        else:
-#            print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
-#            i -= 1
-#    return segments
-
 def detect_black_frames(video_file, threshold=1):
     cap = cv2.VideoCapture(video_file)
     black_frame_blocks = []
