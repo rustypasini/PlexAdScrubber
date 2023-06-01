@@ -6,25 +6,16 @@ import subprocess
 import cv2
 import numpy as np
 
-VERSION = "0.2.0-a"
+VERSION = "0.2.0-c"
 
 def print_help_message():
     help_message = """
-    This script is used to split and merge video segments.
+    This script is used to remove ads from recorded video files from Plex DVR.
 
     Usage: PlexAdScrubber.py
 
-    The script will prompt you for the following inputs:
-
-    - The name of the input file
-    - The start and end time for each segment
-
-    The times should be entered in the format HH:MM:SS.s - HH:MM:SS.s.
-
-    The output will be a file named <input_file_name>-edited.mkv.
-
-    This script depends on ffmpeg and mkvmerge. Please ensure they are installed and in the system PATH.
-
+    The script will prompt you for the name of the input video file.
+    
     """
     print(help_message)
 
@@ -53,6 +44,8 @@ def prompt_file_name():
             print("Invalid file name. Please try again.")
 
 def detect_black_frames(video_file, threshold=1):
+    print(".", end="")
+    sys.stdout.flush()
     cap = cv2.VideoCapture(video_file)
     black_frame_blocks = []
     last_frame_was_black = False
@@ -109,25 +102,28 @@ def convert_timestamp(timestamp):
     return f"{hours:02}:{minutes:02}:{seconds:02}.{tenths_of_second}"
 
 def prompt_segments(file_name):
-    # List of start and end times for the segments to be kept
+    print("\nIdentifying video segments...", end="")
+    sys.stdout.flush()
     segments = detect_black_frames(file_name)
-    # Format segments for compatibility with the rest of the script
     segments = [f"{start} - {end}" for start, end in segments]
     return segments
 
 def convert_to_mkv(file_name):
     # Convert .ts file to .mkv
-    print("\nConverting file to mkv", end="")
+    print("\nConverting file to mkv...", end="")
     sys.stdout.flush()
     run_command(f'ffmpeg -i "{file_name}" -c copy output.mkv > /dev/null 2>&1')
     if not os.path.isfile("output.mkv"):
         print(f"\nError: Failed to create output.mkv.")
         sys.exit(1)
+        
+    print("done", end="")
+    sys.stdout.flush()
     
 def split_file(segments):
     # Create a list of split times
     split_times = []
-    print("\nIdentifying ads", end="")
+    print("\nIdentifying ads...", end="")
     sys.stdout.flush()
     for segment in segments:
         start_time, end_time = [time.strip() for time in segment.split("-")]
@@ -136,7 +132,7 @@ def split_file(segments):
     split_times_str = ",".join(split_times)
     # Use mkvmerge to split the file at the end of each segment
     run_command(f'mkvmerge -o split.mkv --split timecodes:{split_times_str} output.mkv > /dev/null 2>&1')
-    print(".", end="")
+    print("done", end="")
     sys.stdout.flush()
     
 def detect_color(video_file, lower_color, upper_color, x, y, width, height):
@@ -179,7 +175,7 @@ def merge_files(num_segments, new_file_name):
     width = 1
     height = 1
 
-    print("\nReassembling video file", end="")
+    print("\nReassembling video file...", end="")
     sys.stdout.flush()
     
     files_to_merge = []
@@ -189,18 +185,23 @@ def merge_files(num_segments, new_file_name):
             files_to_merge.append(file_name)
     
     run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
+    print("done", end="")
+    sys.stdout.flush()
     validate_and_cleanup(num_segments, new_file_name)
 
 def validate_and_cleanup(num_segments, new_file_name):
     if not os.path.isfile(new_file_name):
         print(f"\nError: Failed to create {new_file_name}.")
         sys.exit(1)
-    print("\nCleaning up temporary files", end="")
+    print("\nCleaning up temporary files...", end="")
     sys.stdout.flush()
     for i in range(1, num_segments+2):  # Adjusted to num_segments+2
         if os.path.exists(f'split-{i:03d}.mkv'):
             run_command(f'rm split-{i:03d}.mkv')
-
+    remove_output_file()
+    print("done", end="")
+    sys.stdout.flush()
+    
 def remove_output_file():
     if os.path.isfile("output.mkv"):
         run_command('rm output.mkv')
@@ -222,7 +223,6 @@ def main():
     num_segments = len(segments)
     split_file(segments)
     merge_files(num_segments, new_file_name)
-    remove_output_file()
     print("\nVideo processing is complete.")
 
 if __name__ == '__main__':
