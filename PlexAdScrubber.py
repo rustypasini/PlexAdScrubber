@@ -43,7 +43,7 @@ def prompt_file_name():
         else:
             print("Invalid file name. Please try again.")
 
-def detect_black_frames(video_file, threshold=1, tolerance=5):
+def detect_black_frames(video_file, threshold=1, tolerance=100):
     print(".", end="")
     sys.stdout.flush()
     cap = cv2.VideoCapture(video_file)
@@ -56,50 +56,66 @@ def detect_black_frames(video_file, threshold=1, tolerance=5):
     fps = cap.get(cv2.CAP_PROP_FPS)
     # Calculate the duration of the video.
     video_duration = frame_count / fps
-    non_black_counter = 0
-    black_counter = 0
+    frame_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    frame_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    current_frame_number = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
+        current_frame_number += 1
+
+        if not ret:
+            break
 
         # Get the timestamp of the current frame in milliseconds.
         timestamp_msec = cap.get(cv2.CAP_PROP_POS_MSEC)
         # Convert timestamp to seconds.
         timestamp_sec = timestamp_msec / 1000
 
-        if not ret:
-            # Video ended, add the last block to the list.
-            block = (last_block_end_time, convert_timestamp(video_duration))
-            black_frame_blocks.append(block)
-            break
-
         # Calculate the average pixel brightness.
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         avg_value = np.average(frame[:, :, 2])
         is_black = avg_value < threshold
 
-        if is_black:
-            black_counter += 1
-            non_black_counter = 0
-        else:
-            non_black_counter += 1
-            black_counter = 0
+        if not is_black and last_frame_was_black:
+            # We detected a transition from black to non-black.
+            # We need to validate it by checking the previous frames.
 
-        if black_counter == tolerance and not last_frame_was_black:
-            # New block of black frames started.
-            block_start_time = timestamp_sec - ((tolerance - 1) / fps)
-            last_frame_was_black = True
-        elif non_black_counter == tolerance and last_frame_was_black:
-            # The block ended.
-            block_duration = timestamp_sec - block_start_time
-            if block_duration >= 0.2:
-                block = (last_block_end_time, convert_timestamp((block_start_time + (block_duration / 2))))
-                black_frame_blocks.append(block)
-                last_block_end_time = block[1]
-            last_frame_was_black = False
+            # Save the current frame number and timestamp.
+            detected_frame_number = current_frame_number
+            detected_timestamp_sec = timestamp_sec
+
+            # Iterate backwards to find the actual transition point.
+            for back_step in range(1, tolerance + 1):
+                cap.set(cv2.CAP_PROP_POS_FRAMES, detected_frame_number - back_step)
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                avg_value = np.average(frame[:, :, 2])
+                if avg_value < threshold:
+                    # We found a black frame, so the transition happened at the next frame.
+                    detected_frame_number -= back_step - 1
+                    detected_timestamp_sec -= (back_step - 1) / fps
+                    break
+
+            # Add the adjusted transition to the list of black frame blocks.
+            block = (last_block_end_time, convert_timestamp(detected_timestamp_sec))
+            black_frame_blocks.append(block)
+            last_block_end_time = convert_timestamp(detected_timestamp_sec)
+
+        last_frame_was_black = is_black
+
+        # We need to reset the frame position to continue from where we were before validating.
+        if current_frame_number != detected_frame_number:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_number)
+
+    # Don't forget the final block when the video ends.
+    block = (last_block_end_time, convert_timestamp(video_duration))
+    black_frame_blocks.append(block)
 
     cap.release()
-
     return black_frame_blocks
 
 def convert_timestamp(timestamp):
