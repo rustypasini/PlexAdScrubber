@@ -6,7 +6,7 @@ import subprocess
 import cv2
 import numpy as np
 
-VERSION = "0.2.0-c"
+VERSION = "0.2.0-d"
 
 def print_help_message():
     help_message = """
@@ -71,8 +71,10 @@ def detect_black_frames(video_file, threshold=1):
             black_frame_blocks.append(block)
             break
 
-        # Calculate the average pixel brightness.
-        avg_brightness = np.average(frame)
+        # Convert the frame to the HSV color space.
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # Calculate the average pixel brightness in the V channel.
+        avg_brightness = np.average(hsv[:, :, 2])
         is_black = avg_brightness < threshold
 
         if is_black and not last_frame_was_black:
