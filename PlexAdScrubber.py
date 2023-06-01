@@ -150,28 +150,82 @@ def split_file(segments):
     run_command(f'mkvmerge -o split.mkv --split timecodes:{split_times_str} output.mkv > /dev/null 2>&1')
     print(".", end="")
     sys.stdout.flush()
+    
+def detect_color(video_file, lower_color, upper_color, x, y, width, height):
+    cap = cv2.VideoCapture(video_file)
+    color_found = False
+    consecutive_frames = 0
 
-def merge_files(num_segments, new_file_name, split_times):
-    # Check if the first segment starts at 00:00:00
-    starts_at_zero = split_times[0] == "00:00:00.0"
-    if starts_at_zero:
-        merge_files_starting_zero(num_segments, new_file_name)
-    else:
-        merge_files_not_starting_zero(num_segments, new_file_name)
+    while cap.isOpened():
+        ret, frame = cap.read()
 
-def merge_files_starting_zero(num_segments, new_file_name):
-    files_to_merge = ["split-001.mkv"]
-    for i in range(3, 2*num_segments, 2):
-        files_to_merge.append(f"split-{i:03d}.mkv")
+        if not ret:
+            break
+
+        # Extract the specific area from the frame.
+        roi = frame[y:y+height, x:x+width]
+
+        # Convert the ROI to HSV.
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+
+        # Apply the color threshold.
+        mask = cv2.inRange(hsv, lower_color, upper_color)
+
+        # Check if the color was found in the ROI.
+        if np.all(mask):
+            consecutive_frames += 1
+        else:
+            consecutive_frames = 0
+
+        if consecutive_frames >= 300:
+            color_found = True
+            break
+
+    cap.release()
+
+    return color_found
+
+def merge_files(num_segments, new_file_name):
+    # Define the color range in HSV.
+    lower_color = np.array([165, 255, 226])
+    upper_color = np.array([170, 255, 255])
+
+    # Define the ROI location and size.
+    x = 548
+    y = 446
+    width = 1
+    height = 1
+
+    files_to_merge = []
+    for i in range(2, 2*num_segments+1):  # Starting from 2 to disregard the first split file.
+        file_name = f"split-{i:03d}.mkv"
+        if detect_color(file_name, lower_color, upper_color, x, y, width, height):
+            files_to_merge.append(file_name)
+    
     run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
-    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=True)
+    validate_and_cleanup(num_segments, new_file_name)
 
-def merge_files_not_starting_zero(num_segments, new_file_name):
-    files_to_merge = ["split-002.mkv"]
-    for i in range(4, 2*num_segments+1, 2):
-        files_to_merge.append(f"split-{i:03d}.mkv")
-    run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
-    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=False)
+#def merge_files(num_segments, new_file_name, split_times):
+#    # Check if the first segment starts at 00:00:00
+#    starts_at_zero = split_times[0] == "00:00:00.0"
+#    if starts_at_zero:
+#        merge_files_starting_zero(num_segments, new_file_name)
+#    else:
+#        merge_files_not_starting_zero(num_segments, new_file_name)
+
+#def merge_files_starting_zero(num_segments, new_file_name):
+#    files_to_merge = ["split-001.mkv"]
+#    for i in range(3, 2*num_segments, 2):
+#        files_to_merge.append(f"split-{i:03d}.mkv")
+#    run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
+#    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=True)
+
+#def merge_files_not_starting_zero(num_segments, new_file_name):
+#    files_to_merge = ["split-002.mkv"]
+#    for i in range(4, 2*num_segments+1, 2):
+#        files_to_merge.append(f"split-{i:03d}.mkv")
+#    run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
+#    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=False)
 
 def validate_and_cleanup(num_segments, new_file_name, starts_at_zero):
     if not os.path.isfile(new_file_name):
