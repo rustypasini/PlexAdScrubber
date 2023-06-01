@@ -124,16 +124,29 @@ def convert_to_mkv(file_name):
     print(".", end="")
     sys.stdout.flush()
 
+#def split_file(segments):
+#    # Create a list of split times
+#    split_times = []
+#    for segment in segments:
+#        start_time, end_time = [time.strip() for time in segment.split("-")]
+#        split_times.append(start_time)
+#        split_times.append(end_time)
+#    # Format split times as a comma-separated string
+#    split_times_str = ",".join(split_times)
+#    # Use mkvmerge to split the file at the start and end of each segment
+#    run_command(f'mkvmerge -o split.mkv --split timecodes:{split_times_str} output.mkv > /dev/null 2>&1')
+#    print(".", end="")
+#    sys.stdout.flush()
+    
 def split_file(segments):
     # Create a list of split times
     split_times = []
     for segment in segments:
         start_time, end_time = [time.strip() for time in segment.split("-")]
-        split_times.append(start_time)
         split_times.append(end_time)
     # Format split times as a comma-separated string
     split_times_str = ",".join(split_times)
-    # Use mkvmerge to split the file at the start and end of each segment
+    # Use mkvmerge to split the file at the end of each segment
     run_command(f'mkvmerge -o split.mkv --split timecodes:{split_times_str} output.mkv > /dev/null 2>&1')
     print(".", end="")
     sys.stdout.flush()
