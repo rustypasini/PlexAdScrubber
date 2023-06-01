@@ -3,6 +3,8 @@ import os
 import re
 import sys
 import subprocess
+import cv2
+import numpy as np
 
 VERSION = "0.2.0-a"
 
