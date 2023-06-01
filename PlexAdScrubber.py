@@ -203,7 +203,7 @@ def main():
     required_programs = ['ffmpeg', 'mkvmerge']
     check_dependencies(required_programs)
     file_name, new_file_name = prompt_file_name()
-    segments = prompt_segments()
+    segments = prompt_segments(file_name)
     num_segments = len(segments)
 
     print("Starting video processing...", end="")
