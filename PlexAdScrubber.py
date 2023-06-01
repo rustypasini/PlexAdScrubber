@@ -52,52 +52,93 @@ def prompt_file_name():
         else:
             print("Invalid file name. Please try again.")
 
+#def detect_black_frames(video_file, threshold=1):
+#    cap = cv2.VideoCapture(video_file)
+#    black_frame_blocks = []
+#    last_frame_was_black = False
+#    block_start_time = None
+#    last_block_end_time = "00:00:00.0"
+#    # Get the total number of frames and the frame rate.
+#    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+#    fps = cap.get(cv2.CAP_PROP_FPS)
+#    # Calculate the duration of the video.
+#    video_duration = frame_count / fps
+#
+#    while cap.isOpened():
+#        ret, frame = cap.read()
+#
+#        # Get the timestamp of the current frame in milliseconds.
+#        timestamp_msec = cap.get(cv2.CAP_PROP_POS_MSEC)
+#        # Convert timestamp to seconds.
+#        timestamp_sec = timestamp_msec / 1000
+#
+#        if not ret:
+#            # Video ended, add the last block to the list.
+#            block = (last_block_end_time, convert_timestamp(video_duration))
+#            black_frame_blocks.append(block)
+#            break
+#
+#        # Calculate the average pixel brightness.
+#        avg_brightness = np.average(frame)
+#        is_black = avg_brightness < threshold
+#
+#        if is_black and not last_frame_was_black:
+#            # New block of black frames started.
+#            block_start_time = timestamp_sec
+#            last_frame_was_black = True
+#        elif not is_black and last_frame_was_black:
+#            # The block ended.
+#            block_duration = timestamp_sec - block_start_time
+#            if block_duration >= 0.2:
+#                block = (last_block_end_time, convert_timestamp((block_start_time + timestamp_sec) / 2))
+#                black_frame_blocks.append(block)
+#                last_block_end_time = block[1]
+#            last_frame_was_black = False
+#
+#    cap.release()
+#
+#    return black_frame_blocks
+
 def detect_black_frames(video_file, threshold=1):
     cap = cv2.VideoCapture(video_file)
     black_frame_blocks = []
     last_frame_was_black = False
     block_start_time = None
     last_block_end_time = "00:00:00.0"
-    # Get the total number of frames and the frame rate.
     frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
     fps = cap.get(cv2.CAP_PROP_FPS)
-    # Calculate the duration of the video.
     video_duration = frame_count / fps
+    num_splits = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
-
-        # Get the timestamp of the current frame in milliseconds.
         timestamp_msec = cap.get(cv2.CAP_PROP_POS_MSEC)
-        # Convert timestamp to seconds.
         timestamp_sec = timestamp_msec / 1000
 
         if not ret:
-            # Video ended, add the last block to the list.
             block = (last_block_end_time, convert_timestamp(video_duration))
             black_frame_blocks.append(block)
+            num_splits += 1
             break
 
-        # Calculate the average pixel brightness.
         avg_brightness = np.average(frame)
         is_black = avg_brightness < threshold
 
         if is_black and not last_frame_was_black:
-            # New block of black frames started.
             block_start_time = timestamp_sec
             last_frame_was_black = True
         elif not is_black and last_frame_was_black:
-            # The block ended.
             block_duration = timestamp_sec - block_start_time
             if block_duration >= 0.2:
                 block = (last_block_end_time, convert_timestamp((block_start_time + timestamp_sec) / 2))
                 black_frame_blocks.append(block)
                 last_block_end_time = block[1]
+                num_splits += 1
             last_frame_was_black = False
 
     cap.release()
 
-    return black_frame_blocks
+    return black_frame_blocks, 2*num_splits+1
 
 def convert_timestamp(timestamp):
     hours = int(timestamp // 3600)
@@ -124,20 +165,6 @@ def convert_to_mkv(file_name):
     print(".", end="")
     sys.stdout.flush()
 
-#def split_file(segments):
-#    # Create a list of split times
-#    split_times = []
-#    for segment in segments:
-#        start_time, end_time = [time.strip() for time in segment.split("-")]
-#        split_times.append(start_time)
-#        split_times.append(end_time)
-#    # Format split times as a comma-separated string
-#    split_times_str = ",".join(split_times)
-#    # Use mkvmerge to split the file at the start and end of each segment
-#    run_command(f'mkvmerge -o split.mkv --split timecodes:{split_times_str} output.mkv > /dev/null 2>&1')
-#    print(".", end="")
-#    sys.stdout.flush()
-    
 def split_file(segments):
     # Create a list of split times
     split_times = []
@@ -205,39 +232,27 @@ def merge_files(num_segments, new_file_name):
     run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
     validate_and_cleanup(num_segments, new_file_name)
 
-#def merge_files(num_segments, new_file_name, split_times):
-#    # Check if the first segment starts at 00:00:00
-#    starts_at_zero = split_times[0] == "00:00:00.0"
-#    if starts_at_zero:
-#        merge_files_starting_zero(num_segments, new_file_name)
-#    else:
-#        merge_files_not_starting_zero(num_segments, new_file_name)
-
-#def merge_files_starting_zero(num_segments, new_file_name):
-#    files_to_merge = ["split-001.mkv"]
-#    for i in range(3, 2*num_segments, 2):
-#        files_to_merge.append(f"split-{i:03d}.mkv")
-#    run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
-#    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=True)
-
-#def merge_files_not_starting_zero(num_segments, new_file_name):
-#    files_to_merge = ["split-002.mkv"]
-#    for i in range(4, 2*num_segments+1, 2):
-#        files_to_merge.append(f"split-{i:03d}.mkv")
-#    run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
-#    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=False)
-
-def validate_and_cleanup(num_segments, new_file_name):
-    if not os.path.isfile(new_file_name):
-        print(f"\nError: Failed to create {new_file_name}.")
-        sys.exit(1)
-    print(".", end="")
-    sys.stdout.flush()
+#def validate_and_cleanup(num_segments, new_file_name):
+#    if not os.path.isfile(new_file_name):
+#        print(f"\nError: Failed to create {new_file_name}.")
+#        sys.exit(1)
+#    print(".", end="")
+#    sys.stdout.flush()
 #    num_files = 2*num_segments+2 if starts_at_zero else 2*num_segments+3
 #    for i in range(1, num_files):
 #        if os.path.exists(f'split-{i:03d}.mkv'):
 #            run_command(f'rm split-{i:03d}.mkv')
 
+def validate_and_cleanup(new_file_name, num_splits):
+    if not os.path.isfile(new_file_name):
+        print(f"\nError: Failed to create {new_file_name}.")
+        sys.exit(1)
+    print(".", end="")
+    sys.stdout.flush()
+    for i in range(1, num_splits):
+        if os.path.exists(f'split-{i:03d}.mkv'):
+            run_command(f'rm split-{i:03d}.mkv')
+            
 def remove_output_file():
     if os.path.isfile("output.mkv"):
         run_command('rm output.mkv')
@@ -254,7 +269,8 @@ def main():
     required_programs = ['ffmpeg', 'mkvmerge']
     check_dependencies(required_programs)
     file_name, new_file_name = prompt_file_name()
-    segments = prompt_segments(file_name)
+#    segments = prompt_segments(file_name)
+    segments, num_splits = prompt_segments(file_name)
     num_segments = len(segments)
 
     print("Starting video processing...", end="")
