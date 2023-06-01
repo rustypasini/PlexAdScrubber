@@ -50,22 +50,85 @@ def prompt_file_name():
         else:
             print("Invalid file name. Please try again.")
 
-def prompt_segments():
-    # RegEx to validate time format
-    time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
-    # List of start and end times for the segments to be kept
-    segments = []
-    i = 0
-    while True:
-        i += 1
-        segment = input(f"Enter the start & end time for segment {i}, or hit Enter to stop: ")
-        if not segment:
+#def prompt_segments():
+#    # RegEx to validate time format
+#    time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
+#    # List of start and end times for the segments to be kept
+#    segments = []
+#    i = 0
+#    while True:
+#        i += 1
+#        segment = input(f"Enter the start & end time for segment {i}, or hit Enter to stop: ")
+#        if not segment:
+#            break
+#        if time_pattern.match(segment):
+#            segments.append(segment.replace(" ", ""))
+#        else:
+#            print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
+#            i -= 1
+#    return segments
+
+def detect_black_frames(video_file, threshold=1):
+    cap = cv2.VideoCapture(video_file)
+    black_frame_blocks = []
+    last_frame_was_black = False
+    block_start_time = None
+    last_block_end_time = "00:00:00.0"
+    # Get the total number of frames and the frame rate.
+    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    # Calculate the duration of the video.
+    video_duration = frame_count / fps
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+
+        # Get the timestamp of the current frame in milliseconds.
+        timestamp_msec = cap.get(cv2.CAP_PROP_POS_MSEC)
+        # Convert timestamp to seconds.
+        timestamp_sec = timestamp_msec / 1000
+
+        if not ret:
+            # Video ended, add the last block to the list.
+            block = (last_block_end_time, convert_timestamp(video_duration))
+            black_frame_blocks.append(block)
             break
-        if time_pattern.match(segment):
-            segments.append(segment.replace(" ", ""))
-        else:
-            print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
-            i -= 1
+
+        # Calculate the average pixel brightness.
+        avg_brightness = np.average(frame)
+        is_black = avg_brightness < threshold
+
+        if is_black and not last_frame_was_black:
+            # New block of black frames started.
+            block_start_time = timestamp_sec
+            last_frame_was_black = True
+        elif not is_black and last_frame_was_black:
+            # The block ended.
+            block_duration = timestamp_sec - block_start_time
+            if block_duration >= 0.2:
+                block = (last_block_end_time, convert_timestamp((block_start_time + timestamp_sec) / 2))
+                black_frame_blocks.append(block)
+                last_block_end_time = block[1]
+            last_frame_was_black = False
+
+    cap.release()
+
+    return black_frame_blocks
+
+def convert_timestamp(timestamp):
+    hours = int(timestamp // 3600)
+    timestamp %= 3600
+    minutes = int(timestamp // 60)
+    timestamp %= 60
+    seconds = int(timestamp)
+    tenths_of_second = round(10 * (timestamp - seconds))
+    return f"{hours:02}:{minutes:02}:{seconds:02}.{tenths_of_second}"
+
+def prompt_segments(file_name):
+    # List of start and end times for the segments to be kept
+    segments = detect_black_frames(file_name)
+    # Format segments for compatibility with the rest of the script
+    segments = [f"{start} - {end}" for start, end in segments]
     return segments
 
 def convert_to_mkv(file_name):
@@ -120,9 +183,9 @@ def validate_and_cleanup(num_segments, new_file_name, starts_at_zero):
     print(".", end="")
     sys.stdout.flush()
     num_files = 2*num_segments+2 if starts_at_zero else 2*num_segments+3
-    for i in range(1, num_files):
-        if os.path.exists(f'split-{i:03d}.mkv'):
-            run_command(f'rm split-{i:03d}.mkv')
+#    for i in range(1, num_files):
+#        if os.path.exists(f'split-{i:03d}.mkv'):
+#            run_command(f'rm split-{i:03d}.mkv')
 
 def remove_output_file():
     if os.path.isfile("output.mkv"):
