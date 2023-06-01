@@ -117,16 +117,18 @@ def prompt_segments(file_name):
 
 def convert_to_mkv(file_name):
     # Convert .ts file to .mkv
+    print("\nConverting file to mkv", end="")
+    sys.stdout.flush()
     run_command(f'ffmpeg -i "{file_name}" -c copy output.mkv > /dev/null 2>&1')
     if not os.path.isfile("output.mkv"):
         print(f"\nError: Failed to create output.mkv.")
         sys.exit(1)
-    print(".", end="")
-    sys.stdout.flush()
     
 def split_file(segments):
     # Create a list of split times
     split_times = []
+    print("\nIdentifying ads", end="")
+    sys.stdout.flush()
     for segment in segments:
         start_time, end_time = [time.strip() for time in segment.split("-")]
         split_times.append(end_time)
@@ -141,23 +143,19 @@ def detect_color(video_file, lower_color, upper_color, x, y, width, height):
     cap = cv2.VideoCapture(video_file)
     color_found = False
     consecutive_frames = 0
-
+    print(".", end="")
+    sys.stdout.flush()
+    
     while cap.isOpened():
         ret, frame = cap.read()
 
         if not ret:
             break
 
-        # Extract the specific area from the frame.
         roi = frame[y:y+height, x:x+width]
-
-        # Convert the ROI to HSV.
         hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-
-        # Apply the color threshold.
         mask = cv2.inRange(hsv, lower_color, upper_color)
 
-        # Check if the color was found in the ROI.
         if np.all(mask):
             consecutive_frames += 1
         else:
@@ -168,7 +166,6 @@ def detect_color(video_file, lower_color, upper_color, x, y, width, height):
             break
 
     cap.release()
-
     return color_found
 
 def merge_files(num_segments, new_file_name):
@@ -182,6 +179,9 @@ def merge_files(num_segments, new_file_name):
     width = 1
     height = 1
 
+    print("\nReassembling video file", end="")
+    sys.stdout.flush()
+    
     files_to_merge = []
     for i in range(2, 2*num_segments+1):  # Starting from 2 to disregard the first split file.
         file_name = f"split-{i:03d}.mkv"
@@ -195,7 +195,7 @@ def validate_and_cleanup(num_segments, new_file_name):
     if not os.path.isfile(new_file_name):
         print(f"\nError: Failed to create {new_file_name}.")
         sys.exit(1)
-    print(".", end="")
+    print("\nCleaning up temporary files", end="")
     sys.stdout.flush()
     for i in range(1, num_segments+2):  # Adjusted to num_segments+2
         if os.path.exists(f'split-{i:03d}.mkv'):
@@ -220,12 +220,10 @@ def main():
     convert_to_mkv(file_name)
     segments = prompt_segments('output.mkv')
     num_segments = len(segments)
-    print("Starting video processing...", end="")
-    sys.stdout.flush()
     split_file(segments)
     merge_files(num_segments, new_file_name)
     remove_output_file()
-    print("\nVideo processing has completed.")
+    print("\nVideo processing is complete.")
 
 if __name__ == '__main__':
     main()
