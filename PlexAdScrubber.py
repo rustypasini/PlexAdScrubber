@@ -227,13 +227,13 @@ def merge_files(num_segments, new_file_name):
 #    run_command(f'mkvmerge -o "{new_file_name}" {" + ".join(files_to_merge)} > /dev/null 2>&1')
 #    validate_and_cleanup(num_segments, new_file_name, starts_at_zero=False)
 
-def validate_and_cleanup(num_segments, new_file_name, starts_at_zero):
+def validate_and_cleanup(num_segments, new_file_name):
     if not os.path.isfile(new_file_name):
         print(f"\nError: Failed to create {new_file_name}.")
         sys.exit(1)
     print(".", end="")
     sys.stdout.flush()
-    num_files = 2*num_segments+2 if starts_at_zero else 2*num_segments+3
+#    num_files = 2*num_segments+2 if starts_at_zero else 2*num_segments+3
 #    for i in range(1, num_files):
 #        if os.path.exists(f'split-{i:03d}.mkv'):
 #            run_command(f'rm split-{i:03d}.mkv')
