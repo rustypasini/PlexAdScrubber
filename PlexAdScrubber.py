@@ -4,7 +4,7 @@ import re
 import sys
 import subprocess
 
-VERSION = "0.1.2-a"
+VERSION = "0.2.0-a"
 
 def print_help_message():
     help_message = """
@@ -49,21 +49,6 @@ def prompt_file_name():
             return file_name, new_file_name
         else:
             print("Invalid file name. Please try again.")
-
-#def prompt_segments(num_segments):
-#    # RegEx to validate time format
-#    time_pattern = re.compile("^\\d{2}:\\d{2}:\\d{2}(\\.\\d)? *- *\\d{2}:\\d{2}:\\d{2}(\\.\\d)?$")
-#    # List of start and end times for the segments to be kept
-#    segments = []
-#    for i in range(num_segments):
-#        while True:
-#            segment = input(f"Please enter the start and end time for segment {i+1} (HH:MM:SS.s - HH:MM:SS.s): ")
-#            if time_pattern.match(segment):
-#                segments.append(segment.replace(" ", ""))
-#                break
-#            else:
-#                print("Invalid time format. Please enter the times in the format HH:MM:SS.s - HH:MM:SS.s")
-#    return segments
 
 def prompt_segments():
     # RegEx to validate time format
@@ -142,36 +127,6 @@ def validate_and_cleanup(num_segments, new_file_name, starts_at_zero):
 def remove_output_file():
     if os.path.isfile("output.mkv"):
         run_command('rm output.mkv')
-
-#def main():
-#    if len(sys.argv) > 1:
-#        if sys.argv[1] in ['-h', '--help']:
-#            print_help_message()
-#            sys.exit(0)
-#        elif sys.argv[1] in ['-v', '--version']:
-#            print(f"PlexAdScrubber.py version {VERSION}")
-#            sys.exit(0)
-#
-#    required_programs = ['ffmpeg', 'mkvmerge']
-#    check_dependencies(required_programs)
-#    file_name, new_file_name = prompt_file_name()
-#
-#    while True:
-#        num_segments = input("Please enter the number of segments: ")
-#        if num_segments.isdigit() and int(num_segments) > 0:
-#            num_segments = int(num_segments)
-#            break
-#        else:
-#            print("Invalid input. Please enter a positive integer.")
-#
-#    segments = prompt_segments(num_segments)
-#    print("Starting video processing...", end="")
-#    sys.stdout.flush()
-#    convert_to_mkv(file_name)
-#    split_file(segments)
-#    merge_files(num_segments, new_file_name, segments[0].split("-"))
-#    remove_output_file()
-#    print("\nVideo processing has completed.")
     
 def main():
     if len(sys.argv) > 1:
