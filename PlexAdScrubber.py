@@ -6,7 +6,7 @@ import subprocess
 import cv2
 import numpy as np
 
-VERSION = "0.2.0-e"
+VERSION = "0.2.0-f"
 
 def print_help_message():
     help_message = """
@@ -59,6 +59,8 @@ def detect_black_frames(video_file, threshold=1, tolerance=100):
     frame_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     frame_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
     current_frame_number = 0
+    detected_frame_number = 0
+    detected_timestamp_sec = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
