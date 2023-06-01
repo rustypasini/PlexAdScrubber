@@ -217,12 +217,11 @@ def main():
     required_programs = ['ffmpeg', 'mkvmerge']
     check_dependencies(required_programs)
     file_name, new_file_name = prompt_file_name()
-    segments = prompt_segments(file_name)
+    convert_to_mkv(file_name)
+    segments = prompt_segments('output.mkv')
     num_segments = len(segments)
-
     print("Starting video processing...", end="")
     sys.stdout.flush()
-    convert_to_mkv(file_name)
     split_file(segments)
     merge_files(num_segments, new_file_name)
     remove_output_file()
