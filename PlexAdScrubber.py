@@ -6,7 +6,7 @@ import subprocess
 import cv2
 import numpy as np
 
-VERSION = "0.2.0-d"
+VERSION = "0.2.0-e"
 
 def print_help_message():
     help_message = """
@@ -43,7 +43,7 @@ def prompt_file_name():
         else:
             print("Invalid file name. Please try again.")
 
-def detect_black_frames(video_file, threshold=1):
+def detect_black_frames(video_file, threshold=1, tolerance=5):
     print(".", end="")
     sys.stdout.flush()
     cap = cv2.VideoCapture(video_file)
@@ -56,6 +56,8 @@ def detect_black_frames(video_file, threshold=1):
     fps = cap.get(cv2.CAP_PROP_FPS)
     # Calculate the duration of the video.
     video_duration = frame_count / fps
+    non_black_counter = 0
+    black_counter = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -71,21 +73,27 @@ def detect_black_frames(video_file, threshold=1):
             black_frame_blocks.append(block)
             break
 
-        # Convert the frame to the HSV color space.
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        # Calculate the average pixel brightness in the V channel.
-        avg_brightness = np.average(hsv[:, :, 2])
-        is_black = avg_brightness < threshold
+        # Calculate the average pixel brightness.
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        avg_value = np.average(frame[:, :, 2])
+        is_black = avg_value < threshold
 
-        if is_black and not last_frame_was_black:
+        if is_black:
+            black_counter += 1
+            non_black_counter = 0
+        else:
+            non_black_counter += 1
+            black_counter = 0
+
+        if black_counter == tolerance and not last_frame_was_black:
             # New block of black frames started.
-            block_start_time = timestamp_sec
+            block_start_time = timestamp_sec - ((tolerance - 1) / fps)
             last_frame_was_black = True
-        elif not is_black and last_frame_was_black:
+        elif non_black_counter == tolerance and last_frame_was_black:
             # The block ended.
             block_duration = timestamp_sec - block_start_time
             if block_duration >= 0.2:
-                block = (last_block_end_time, convert_timestamp((block_start_time + timestamp_sec) / 2))
+                block = (last_block_end_time, convert_timestamp((block_start_time + (block_duration / 2))))
                 black_frame_blocks.append(block)
                 last_block_end_time = block[1]
             last_frame_was_black = False
